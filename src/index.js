@@ -8,31 +8,43 @@ let client;
 wss.on('connection', ws => {
   ws.on('message', message => {
     console.log(`Received message => ${message}`);
-    pMess = JSON.parse(message);
+    let pMess;
+    try {
+      pMess = JSON.parse(message);
+    } catch (e) {
+      console.error('Not a JSON string');
+      return;
+    };
 
     if (!pMess?.type) return;
 
     if (pMess?.type === 'identification') {
       if (!pMess?.id) return;
-      if (pMess?.id === '0') client = ws;
-      else buzzers.push({ id: pMess?.id, ws });
+      if (pMess?.id === '0') {
+        client = ws;
+        buzzers.forEach((b) => client.send(JSON.stringify({ id: b?.id, status: 'handshake' })));
+      } else {
+        console.log(buzzers);
+        if (buzzers.some((b) => b.id === pMess.id)) {
+          buzzers.find((b) => b.id === pMess.id).ws = ws;
+        } else {
+          buzzers.push({ id: pMess?.id, ws });
+          console.log({ client, buzzers });
+          if (client) client.send(JSON.stringify({ id: pMess?.id, status: 'handshake' }));
+        }
+      }
       return;
     }
 
     if (pMess?.type === 'buzz') {
       if (!pMess?.id) return;
       if (!client) return;
-      client.send(JSON.stringify({ id: pMess.id, status: 'buzz' }));
+      client.send(JSON.stringify({ id: pMess.id, status: 'buzzed' }));
       ws.send('1');
     }
 
     if (pMess?.type === 'unbuzz-all') {
       buzzers.map((buzz) => buzz.send('0'));
     }
-
-    ws.send(JSON.stringify({
-      id: pMess.id,
-      status: 'buzzed',
-    }));
   })
 })
