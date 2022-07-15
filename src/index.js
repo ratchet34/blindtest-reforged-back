@@ -4,6 +4,7 @@ const wss = new WebSocketServer({ port: '6969' });
 
 const buzzers = [];
 let client;
+let admin;
 
 wss.on('connection', ws => {
   ws.on('message', message => {
@@ -17,6 +18,15 @@ wss.on('connection', ws => {
     };
 
     if (!pMess?.type) return;
+
+    if (pMess.type === 'admin') {
+      admin = ws;
+    }
+
+    if (pMess.type === 'item-to-admin') {
+      if (!admin) return;
+      admin.send(JSON.stringify(pMess.data));
+    }
 
     if (pMess?.type === 'identification') {
       if (!pMess?.id) return;
